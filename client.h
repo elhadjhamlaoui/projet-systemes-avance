@@ -2,6 +2,8 @@
 
 #define __LPC_CLIENT__
 
+#define STRING_LENGHT 20
+
 typedef enum
 {
     STRING,
@@ -13,7 +15,7 @@ typedef enum
 typedef struct
 {
     int slen;
-    char string[20];
+    char string[STRING_LENGHT];
 } lpc_string;
 
 void *lpc_open(const char *name);

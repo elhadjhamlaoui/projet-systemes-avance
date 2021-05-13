@@ -5,6 +5,7 @@
 #include <semaphore.h>
 #include "client.h"
 #include <pthread.h>
+#include <sys/types.h>
 
 
 
@@ -30,6 +31,8 @@ typedef struct
     pthread_cond_t wcond;
     int result;
     int err;
+    pid_t pid;
+    int transfert_end;
 } HEADER;
 
 typedef struct

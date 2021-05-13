@@ -1,6 +1,8 @@
 #include <string.h>
 #include <stdio.h>
 #include "../memory.h"
+#include "../client.h"
+#include <unistd.h>
 
 int test1(LpcArg *args)
 {
@@ -26,11 +28,23 @@ int test1(LpcArg *args)
             args[i].dbl = args[i].dbl * 2;
             break;
         case STRING:
+        {
+            char str[] = " **modified";
+            if (((int)strlen(str) + (int)strlen(args[i].str.string)) >= STRING_LENGHT)
+            {
+                errno = ENOMEM;
+                args[i].str.slen = -1;
+                return -1;
+            }
             strcat(args[i].str.string, " **modified");
             break;
+        }
         default:
             break;
         }
         i++;
     }
+
+    sleep(10);
+    return 0;
 }

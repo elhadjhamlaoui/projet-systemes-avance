@@ -4,6 +4,8 @@
 #include <sys/stat.h>
 #include <pthread.h>
 #include <errno.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 
 #include "memory.h"
 #include "server.h"
@@ -22,34 +24,54 @@ int main(int argc, char **argv)
     functions[1].fun = (int (*)(void *))test2;
 
     size_t n = 8;
-    MEMORY *mem = lpc_create("/test2", n);
+    MEMORY *mem = lpc_create("/lpc", n);
 
+    int nb_fils = 0;
     while (1)
     {
         pthread_mutex_lock(&mem->header.mutex);
 
         pthread_cond_wait(&mem->header.rcond, &mem->header.mutex);
 
-        for (int i = 0; i < 2; i++)
+        printf("\nServir le Client %d\n\n", mem->header.pid);
+
+        nb_fils++;
+        if (fork() == 0)
         {
-            if (strcmp(functions[i].fun_name, mem->data.fun_name) == 0)
+
+            char str[50];
+            sprintf(str, "/lpc%d", mem->header.pid);
+
+            MEMORY *mem_communication = lpc_create(str, n);
+
+            pthread_mutex_unlock(&mem->header.mutex);
+
+            pthread_cond_signal(&mem->header.wcond);
+
+            pthread_mutex_lock(&mem_communication->header.mutex);
+
+            pthread_cond_wait(&mem_communication->header.rcond, &mem_communication->header.mutex);
+            for (int i = 0; i < 2; i++)
             {
-                mem->header.result = functions[i].fun(&mem->data.lpcArgs);
-                if (mem->header.result == -1)
+                if (strcmp(functions[i].fun_name, mem_communication->data.fun_name) == 0)
                 {
-                    mem->header.err = errno;
+                    mem_communication->header.result = functions[i].fun(&mem_communication->data.lpcArgs);
+                    if (mem_communication->header.result == -1)
+                    {
+                        mem_communication->header.err = errno;
+                    }
+                    break;
                 }
-                break;
             }
+
+            pthread_mutex_unlock(&mem_communication->header.mutex);
+
+            pthread_cond_signal(&mem_communication->header.wcond);
+
         }
-        /* signaler le client */
-
-        pthread_mutex_unlock(&mem->header.mutex);
-
-        pthread_cond_signal(&mem->header.wcond);
+        if (nb_fils > 0 && waitpid(-1, NULL, WNOHANG) > 0)
+            nb_fils--;
     }
-
-    exit(0);
 }
 
 void *lpc_create(const char *name, size_t capacity)

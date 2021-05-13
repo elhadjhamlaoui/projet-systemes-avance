@@ -12,13 +12,14 @@
 
 #include "memory.h"
 #include "client.h"
+#include <unistd.h>
 
 int main(int argc, char **argv)
 {
     int a = 0;
     double b = 0;
 
-    void *memory = lpc_open("/test2");
+    void *memory = lpc_open("/lpc");
     lpc_string *str;
     char fun_name[NAMELEN];
 
@@ -61,13 +62,12 @@ int main(int argc, char **argv)
         else
         {
             params[i] = argv[i];
-            
+
             strcpy(fun_name, params[i]);
         }
     }
 
     lpc_call(memory, fun_name, INT, &a, DOUBLE, &b, STRING, str, NOP);
-
 }
 
 lpc_string *lpc_make_string(const char *s, int taille)
@@ -104,6 +104,20 @@ int lpc_call(void *memory, const char *fun_name, ...)
 
     /* section critique */
 
+
+    mem->header.pid = getpid();
+
+
+    /* signaler le server */
+    pthread_cond_signal(&mem->header.rcond);
+
+    pthread_cond_wait(&mem->header.wcond, &mem->header.mutex);
+
+    char str[50];
+    sprintf(str, "/lpc%d", getpid());
+    MEMORY *mem_communication = lpc_open(str);
+
+
     va_list va;
 
     va_start(va, 1);
@@ -112,7 +126,8 @@ int lpc_call(void *memory, const char *fun_name, ...)
     int i = 0;
     int j = 0;
 
-    strcpy(mem->data.fun_name, fun_name);
+    strcpy(mem_communication->data.fun_name, fun_name);
+
 
     while (lastParam != 1)
     {
@@ -123,8 +138,8 @@ int lpc_call(void *memory, const char *fun_name, ...)
         case STRING:
         {
             lpc_string *str = va_arg(va, lpc_string *);
-            mem->data.lpcArgs[i].type = STRING;
-            mem->data.lpcArgs[i].str = *str;
+            mem_communication->data.lpcArgs[i].type = STRING;
+            mem_communication->data.lpcArgs[i].str = *str;
             j++;
         }
 
@@ -132,9 +147,9 @@ int lpc_call(void *memory, const char *fun_name, ...)
         case DOUBLE:
         {
             double *dbl = va_arg(va, double *);
-            mem->data.lpcArgs[i].type = DOUBLE;
+            mem_communication->data.lpcArgs[i].type = DOUBLE;
 
-            mem->data.lpcArgs[i].dbl = *dbl;
+            mem_communication->data.lpcArgs[i].dbl = *dbl;
 
             j++;
         }
@@ -142,18 +157,17 @@ int lpc_call(void *memory, const char *fun_name, ...)
         break;
         case INT:
         {
-
             int *intg = va_arg(va, int *);
-            mem->data.lpcArgs[i].type = INT;
+            mem_communication->data.lpcArgs[i].type = INT;
 
-            mem->data.lpcArgs[i].intg = *intg;
+            mem_communication->data.lpcArgs[i].intg = *intg;
 
             j++;
         }
         break;
         case NOP:
         {
-            mem->data.lpcArgs[i].type = NOP;
+            mem_communication->data.lpcArgs[i].type = NOP;
 
             j++;
             lastParam = 1;
@@ -169,38 +183,39 @@ int lpc_call(void *memory, const char *fun_name, ...)
 
     va_end(va);
 
-    MEMORY *mm = (MEMORY *)memory;
 
     printf("\n***** BEFORE *****\n\n");
-    printf("%d\n", mm->data.lpcArgs[0].intg);
-    printf("%f\n", mm->data.lpcArgs[1].dbl);
-    printf("%s\n", mm->data.lpcArgs[2].str.string);
+    printf("%d\n", mem_communication->data.lpcArgs[0].intg);
+    printf("%f\n", mem_communication->data.lpcArgs[1].dbl);
+    printf("%s\n", mem_communication->data.lpcArgs[2].str.string);
 
-    /* signaler le server */
-    pthread_cond_signal(&mem->header.rcond);
 
-    pthread_cond_wait(&mem->header.wcond, &mem->header.mutex);
+    pthread_cond_signal(&mem_communication->header.rcond);
 
-    if (mem->header.result == -1)
+    pthread_cond_wait(&mem_communication->header.wcond, &mem_communication->header.mutex);
+
+    if (mem_communication->header.result == -1)
     {
-        errno = mem->header.err;
+        errno = mem_communication->header.err;
         printf("The error message is : %s\n", strerror(errno));
+        return -1;
     }
 
-    va_start(va, 1);
 
     printf("\n***** AFTER *****\n\n");
+
+    va_start(va, 1);
 
     lastParam = 0;
     for (int index = 0; index < j && lastParam == 0; index++)
     {
         va_arg(va, lpc_type);
 
-        switch (mem->data.lpcArgs[index].type)
+        switch (mem_communication->data.lpcArgs[index].type)
         {
         case STRING:
         {
-            lpc_string str = mem->data.lpcArgs[index].str;
+            lpc_string str = mem_communication->data.lpcArgs[index].str;
             lpc_string *param = va_arg(va, lpc_string *);
             strcpy(param->string, str.string);
             printf("%s\n", param->string);
@@ -209,7 +224,7 @@ int lpc_call(void *memory, const char *fun_name, ...)
         break;
         case DOUBLE:
         {
-            double dbl = mem->data.lpcArgs[index].dbl;
+            double dbl = mem_communication->data.lpcArgs[index].dbl;
             double *param = va_arg(va, double *);
             memcpy(param, &dbl, sizeof(double));
             printf("%f\n", *param);
@@ -218,7 +233,7 @@ int lpc_call(void *memory, const char *fun_name, ...)
         break;
         case INT:
         {
-            int intg = mem->data.lpcArgs[index].intg;
+            int intg = mem_communication->data.lpcArgs[index].intg;
             int *param = va_arg(va, int *);
             memcpy(param, &intg, sizeof(int));
             printf("%d\n", *param);
