@@ -120,7 +120,7 @@ int lpc_call(void *memory, const char *fun_name, ...)
 
     va_list va;
 
-    va_start(va, 1);
+    va_start(va, fun_name);
     int lastParam = 0;
 
     int i = 0;
@@ -204,7 +204,7 @@ int lpc_call(void *memory, const char *fun_name, ...)
 
     printf("\n***** AFTER *****\n\n");
 
-    va_start(va, 1);
+    va_start(va, fun_name);
 
     lastParam = 0;
     for (int index = 0; index < j && lastParam == 0; index++)

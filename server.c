@@ -37,6 +37,7 @@ int main(int argc, char **argv)
 
         nb_fils++;
         if (fork() == 0)
+
         {
 
             char str[50];
