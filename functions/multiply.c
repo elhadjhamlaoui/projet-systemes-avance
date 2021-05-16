@@ -4,18 +4,8 @@
 #include "../client.h"
 #include <unistd.h>
 
-int test1(LpcArg *args)
+int multiply(LpcArg *args)
 {
-
-    // FILE *fp;
-
-    // fp = fopen(" GeeksForGeeks.txt ", "r");
-
-    // if (fp == NULL)
-    // {
-    //     return -1;
-    // }
-
     int i = 0;
     while (args[i].type != NOP)
     {
@@ -44,7 +34,5 @@ int test1(LpcArg *args)
         }
         i++;
     }
-
-    sleep(10);
     return 0;
 }

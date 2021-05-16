@@ -24,50 +24,49 @@ int main(int argc, char **argv)
     char fun_name[NAMELEN];
 
     void *params[argc];
-    for (int i = 1; i < argc; i++)
+
+    strcpy(fun_name, argv[1]);
+    int j = 0;
+    for (int i = 2; i < argc; i++)
     {
-
-        params[i] = &a;
-
         if (strcmp(argv[i], "int") == 0)
         {
-            lpc_type type = INT;
-            params[i] = &type;
             i++;
             a = strtol(argv[i], NULL, 0);
-            params[i] = &a;
+            params[j] = &a;
         }
         else if (strcmp(argv[i], "double") == 0)
         {
-            lpc_type type = DOUBLE;
-            params[i] = &type;
             i++;
             b = strtod(argv[i], NULL);
-            params[i] = &b;
+            params[j] = &b;
         }
         else if (strcmp(argv[i], "string") == 0)
         {
-            lpc_type type = STRING;
-            params[i] = &type;
             i++;
             str = lpc_make_string(argv[i], strlen(argv[i]) + 1);
-            params[i] = str;
-        }
-        else if (strcmp(argv[i], "nop") == 0)
-        {
-            lpc_type type = NOP;
-            params[i] = &type;
+            params[j] = str;
         }
 
-        else
-        {
-            params[i] = argv[i];
-
-            strcpy(fun_name, params[i]);
-        }
+        j++;
     }
 
-    lpc_call(memory, fun_name, INT, &a, DOUBLE, &b, STRING, str, NOP);
+    if (strcmp(argv[1], "multiply") == 0)
+    {
+        lpc_call(memory, fun_name, INT, params[0], DOUBLE, params[1], STRING, params[2], NOP);
+    }
+    else if (strcmp(argv[1], "multiply_sleep") == 0)
+    {
+        lpc_call(memory, fun_name, INT, params[0], DOUBLE, params[1], STRING, params[2], NOP);
+    }
+    else if (strcmp(argv[1], "readFile") == 0)
+    {
+        lpc_call(memory, fun_name, STRING, params[0], NOP);
+    }
+    else if (strcmp(argv[1], "concatenate") == 0)
+    {
+        lpc_call(memory, fun_name, STRING, params[0], STRING, params[1], NOP);
+    }
 }
 
 lpc_string *lpc_make_string(const char *s, int taille)
@@ -104,9 +103,7 @@ int lpc_call(void *memory, const char *fun_name, ...)
 
     /* section critique */
 
-
     mem->header.pid = getpid();
-
 
     /* signaler le server */
     pthread_cond_signal(&mem->header.rcond);
@@ -116,7 +113,6 @@ int lpc_call(void *memory, const char *fun_name, ...)
     char str[50];
     sprintf(str, "/lpc%d", getpid());
     MEMORY *mem_communication = lpc_open(str);
-
 
     va_list va;
 
@@ -128,6 +124,7 @@ int lpc_call(void *memory, const char *fun_name, ...)
 
     strcpy(mem_communication->data.fun_name, fun_name);
 
+    printf("\n***** BEFORE *****\n\n");
 
     while (lastParam != 1)
     {
@@ -140,6 +137,8 @@ int lpc_call(void *memory, const char *fun_name, ...)
             lpc_string *str = va_arg(va, lpc_string *);
             mem_communication->data.lpcArgs[i].type = STRING;
             mem_communication->data.lpcArgs[i].str = *str;
+            printf("%s\n", str->string);
+
             j++;
         }
 
@@ -150,6 +149,7 @@ int lpc_call(void *memory, const char *fun_name, ...)
             mem_communication->data.lpcArgs[i].type = DOUBLE;
 
             mem_communication->data.lpcArgs[i].dbl = *dbl;
+            printf("%f\n", *dbl);
 
             j++;
         }
@@ -158,9 +158,12 @@ int lpc_call(void *memory, const char *fun_name, ...)
         case INT:
         {
             int *intg = va_arg(va, int *);
+
             mem_communication->data.lpcArgs[i].type = INT;
 
             mem_communication->data.lpcArgs[i].intg = *intg;
+
+            printf("%d\n", *intg);
 
             j++;
         }
@@ -184,12 +187,6 @@ int lpc_call(void *memory, const char *fun_name, ...)
     va_end(va);
 
 
-    printf("\n***** BEFORE *****\n\n");
-    printf("%d\n", mem_communication->data.lpcArgs[0].intg);
-    printf("%f\n", mem_communication->data.lpcArgs[1].dbl);
-    printf("%s\n", mem_communication->data.lpcArgs[2].str.string);
-
-
     pthread_cond_signal(&mem_communication->header.rcond);
 
     pthread_cond_wait(&mem_communication->header.wcond, &mem_communication->header.mutex);
@@ -200,7 +197,6 @@ int lpc_call(void *memory, const char *fun_name, ...)
         printf("The error message is : %s\n", strerror(errno));
         return -1;
     }
-
 
     printf("\n***** AFTER *****\n\n");
 

@@ -9,19 +9,27 @@
 
 #include "memory.h"
 #include "server.h"
-#include "functions/test1.c"
-#include "functions/test2.c"
+#include "functions/multiply_sleep.c"
+#include "functions/multiply.c"
+#include "functions/readFile.c"
+#include "functions/concatenate.c"
 
 int main(int argc, char **argv)
 {
 
-    lpc_function functions[2];
+    lpc_function functions[4];
 
-    strcpy(functions[0].fun_name, "test1");
-    functions[0].fun = (int (*)(void *))test1;
+    strcpy(functions[0].fun_name, "multiply_sleep");
+    functions[0].fun = (int (*)(void *))multiply_sleep;
 
-    strcpy(functions[1].fun_name, "test2");
-    functions[1].fun = (int (*)(void *))test2;
+    strcpy(functions[1].fun_name, "multiply");
+    functions[1].fun = (int (*)(void *))multiply;
+
+    strcpy(functions[2].fun_name, "readFile");
+    functions[2].fun = (int (*)(void *))readFile;
+
+     strcpy(functions[3].fun_name, "concatenate");
+    functions[3].fun = (int (*)(void *))concatenate;
 
     size_t n = 8;
     MEMORY *mem = lpc_create("/lpc", n);
@@ -52,7 +60,7 @@ int main(int argc, char **argv)
             pthread_mutex_lock(&mem_communication->header.mutex);
 
             pthread_cond_wait(&mem_communication->header.rcond, &mem_communication->header.mutex);
-            for (int i = 0; i < 2; i++)
+            for (int i = 0; i < sizeof(functions); i++)
             {
                 if (strcmp(functions[i].fun_name, mem_communication->data.fun_name) == 0)
                 {
