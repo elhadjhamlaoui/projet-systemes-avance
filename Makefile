@@ -14,6 +14,6 @@ client : client.c memory.h
 server : server.c 
 
 clean:
-	rm -rf *~
+	rm -rf *~ $(ALL) *.o
 cleanall:
 	rm -rf *~ $(ALL) *.o
