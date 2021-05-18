@@ -27,12 +27,14 @@ int readFile(LpcArg *args)
             }
 
             char str[] = " **read";
+            
             if (((int)strlen(str) + (int)strlen(args[i].str.string)) >= STRING_LENGHT)
             {
                 errno = ENOMEM;
                 args[i].str.slen = -1;
                 return -1;
             }
+
             strcat(args[i].str.string, " **read");
 
             break;

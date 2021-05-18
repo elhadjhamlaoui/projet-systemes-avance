@@ -31,7 +31,7 @@ int main(int argc, char **argv)
      strcpy(functions[3].fun_name, "concatenate");
     functions[3].fun = (int (*)(void *))concatenate;
 
-    size_t n = 8;
+    size_t n = 16;
     MEMORY *mem = lpc_create("/lpc", n);
 
     int nb_fils = 0;
