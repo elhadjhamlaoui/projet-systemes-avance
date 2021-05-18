@@ -28,7 +28,7 @@ int main(int argc, char **argv)
     strcpy(functions[2].fun_name, "readFile");
     functions[2].fun = (int (*)(void *))readFile;
 
-     strcpy(functions[3].fun_name, "concatenate");
+    strcpy(functions[3].fun_name, "concatenate");
     functions[3].fun = (int (*)(void *))concatenate;
 
     size_t n = 1024;
@@ -77,8 +77,9 @@ int main(int argc, char **argv)
 
             pthread_cond_signal(&mem_communication->header.wcond);
 
+            _exit(0);
         }
-        if (nb_fils > 0 && waitpid(-1, NULL, WNOHANG) > 0)
+        while (nb_fils > 0 && waitpid(-1, NULL, WNOHANG) > 0)
             nb_fils--;
     }
 }
