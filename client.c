@@ -106,8 +106,12 @@ int lpc_call(void *memory, const char *fun_name, ...)
     mem->header.pid = getpid();
 
     /* signaler le server */
+
+    pthread_mutex_unlock(&mem->header.mutex);
+
     pthread_cond_signal(&mem->header.rcond);
 
+    pthread_mutex_lock(&mem->header.mutex);
     pthread_cond_wait(&mem->header.wcond, &mem->header.mutex);
 
     char str[50];
@@ -186,8 +190,11 @@ int lpc_call(void *memory, const char *fun_name, ...)
 
     va_end(va);
 
+    pthread_mutex_unlock(&mem->header.mutex);
 
     pthread_cond_signal(&mem_communication->header.rcond);
+
+    pthread_mutex_lock(&mem->header.mutex);
 
     pthread_cond_wait(&mem_communication->header.wcond, &mem_communication->header.mutex);
 
